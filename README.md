@@ -1,4 +1,5 @@
 # SOLUCIONES-MORA-PRUEBA-1
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,7 +7,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Panel de Dosificadores</title>
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-database-compat.js"></script>
 <style>
   :root{--fondo:#0b1626;--panel:#13233a;--tarjeta:#1a2e4a;--texto:#e8f1fb;--suave:#8fa6c4;--acento:#22d3ee;--ok:#34d399;--mal:#f87171;}
@@ -87,43 +87,67 @@ const firebaseConfig = {
   projectId: "TU_PROYECTO"
 };
 const DOMINIO_USUARIOS = "dosificadores.app"; // usuario "vive" => vive@dosificadores.app
-const USUARIOS_SOLO_LECTURA = ["invitado"]; // pueden ver, pero no controlar
 let soloLectura = false;
 const TOTAL_DISPOSITIVOS = 10;
 const UMBRAL_CONEXION_MS = 35000;
 const TEMP_MIN = 0, TEMP_MAX = 50; // rango de la barra del termometro (°C)
 
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
 const db = firebase.database();
 
-// ---------------- LOGIN ----------------
+// ---------------- LOGIN (solo en el HTML, sin Firebase Authentication) ----------------
+// Las contraseñas NO estan en texto: solo su huella SHA-256 (sal "dosi:usuario:contraseña").
+const USUARIOS = {
+  vive:     { hash: "a46125d56223c089152f7d1b2f612316f3653a5bf4b6a42a8c550db79ff3cdee", lectura: false },
+  mora:     { hash: "cae087af6b85000a2f7853d0bd07f8b538924b7e6fde5af87b0648d9750753e1", lectura: false },
+  invitado: { hash: "2ea956abaffb13acfbddc74856502468475f32e5f759c07e591242bfca7b1551", lectura: true }
+};
+
 const elUsuario = document.getElementById("usuario");
 const elClave = document.getElementById("clave");
 const elMsg = document.getElementById("msgLogin");
 
-function entrar() {
+async function sha256(texto) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
+  return Array.from(new Uint8Array(b)).map(function (x) { return x.toString(16).padStart(2, "0"); }).join("");
+}
+
+async function entrar() {
   const usuario = elUsuario.value.trim().toLowerCase();
   if (!usuario || !elClave.value) { elMsg.textContent = "Escribe usuario y contraseña."; return; }
   elMsg.textContent = "";
-  auth.signInWithEmailAndPassword(usuario + "@" + DOMINIO_USUARIOS, elClave.value).catch(function (e) {
-    elMsg.textContent = e.code === "auth/too-many-requests" ? "Demasiados intentos. Espera un momento." : "Usuario o contraseña incorrectos.";
-  });
+  try {
+    const u = Object.prototype.hasOwnProperty.call(USUARIOS, usuario) ? USUARIOS[usuario] : null;
+    const huella = await sha256("dosi:" + usuario + ":" + elClave.value);
+    if (u && huella === u.hash) {
+      try { sessionStorage.setItem("dosiUsuario", usuario); } catch (e) {}
+      mostrarApp(usuario);
+    } else {
+      elMsg.textContent = "Usuario o contraseña incorrectos.";
+    }
+  } catch (e) {
+    elMsg.textContent = "Este navegador no permite la verificación. Abre la página desde https o localhost.";
+  }
 }
 document.getElementById("btnEntrar").addEventListener("click", entrar);
 elClave.addEventListener("keydown", function (e) { if (e.key === "Enter") entrar(); });
-document.getElementById("btnSalir").addEventListener("click", function () { auth.signOut().then(function () { location.reload(); }); });
+document.getElementById("btnSalir").addEventListener("click", function () {
+  try { sessionStorage.removeItem("dosiUsuario"); } catch (e) {}
+  location.reload();
+});
 
 let panelIniciado = false;
-auth.onAuthStateChanged(function (u) {
-  document.getElementById("login").style.display = u ? "none" : "block";
-  document.getElementById("app").style.display = u ? "block" : "none";
-  if (u) {
-    soloLectura = USUARIOS_SOLO_LECTURA.indexOf((u.email || "").split("@")[0].toLowerCase()) !== -1;
-    document.getElementById("avisoLectura").style.display = soloLectura ? "" : "none";
-  }
-  if (u && !panelIniciado) { panelIniciado = true; iniciarPanel(); }
-});
+function mostrarApp(usuario) {
+  soloLectura = USUARIOS[usuario].lectura;
+  document.getElementById("login").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  document.getElementById("avisoLectura").style.display = soloLectura ? "" : "none";
+  if (!panelIniciado) { panelIniciado = true; iniciarPanel(); }
+}
+try {
+  const guardado = sessionStorage.getItem("dosiUsuario");
+  if (guardado && USUARIOS[guardado]) mostrarApp(guardado);
+} catch (e) {}
 
 // ---------------- PANEL ----------------
 function iniciarPanel() {
@@ -149,7 +173,7 @@ function iniciarPanel() {
     grupo.style.display = "none";
     grupo.innerHTML =
       "<div class='cabecera'><span class='led'></span><h2>" + d.nombre + "</h2>" +
-      "<span class='chip desc chip-con'>Desconectado</span><span class='chip temp chip-temp' style='display:none'></span></div>" +
+      "<span class='chip desc chip-con'>Desconectado</span></div>" +
       "<div class='contenedor'>" +
         "<div class='card'><h3>Estado</h3><p class='valor-estado'>Cargando...</p>" +
           "<button class='btn-star'>star</button><button class='btn-stop'>stop</button></div>" +
@@ -159,7 +183,7 @@ function iniciarPanel() {
         "<div class='card'><h3>Cada cuánto</h3><p>Actual: <b class='valor-cada'>-</b> s</p>" +
           "<input type='number' min='1' step='1' class='input-cada' placeholder='segundos'>" +
           "<button class='btn-guardar btn-guardar-cada'>Actualizar</button></div>" +
-        "<div class='card'><h3>🌡 Temperatura del agua</h3>" +
+        "<div class='card'><h3>Temperatura del agua</h3>" +
           "<div class='temp-num'><span class='valor-temp'>--</span> <small>°C</small></div>" +
           "<div class='term'><i></i></div>" +
           "<div class='term-esc'><span>" + TEMP_MIN + "°</span><span>" + TEMP_MAX + "°</span></div></div>" +
@@ -167,7 +191,7 @@ function iniciarPanel() {
     contenedor.appendChild(grupo);
 
     const q = function (s) { return grupo.querySelector(s); };
-    const led = q(".led"), chipCon = q(".chip-con"), chipTemp = q(".chip-temp");
+    const led = q(".led"), chipCon = q(".chip-con");
     const ref = db.ref("dosificadores/" + d.id);
     let datos = null;
 
@@ -193,12 +217,9 @@ function iniciarPanel() {
         q(".valor-temp").textContent = t.toFixed(1);
         barra.style.width = pct + "%";
         barra.style.background = "hsl(" + Math.round(200 - pct * 2) + ",85%,55%)"; // azul frio -> rojo caliente
-        chipTemp.textContent = "🌡 " + t.toFixed(1) + " °C";
-        chipTemp.style.display = "";
       } else {
         q(".valor-temp").textContent = "--";
         barra.style.width = "0";
-        chipTemp.style.display = "none";
       }
     }
 
@@ -228,3 +249,4 @@ function iniciarPanel() {
 </script>
 </body>
 </html>
+
