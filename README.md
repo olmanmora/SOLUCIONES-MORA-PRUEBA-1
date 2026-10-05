@@ -1,6 +1,6 @@
 # SOLUCIONES-MORA-PRUEBA-1
 
-<!DOCTYPE html>
+
 <html lang="es">
 <head>
 <meta charset="UTF-8">
