@@ -1,155 +1,229 @@
 # SOLUCIONES-MORA-PRUEBA-1
-PAGUINA PARA VER DISPOCITIVOS DE ALIMENTADORES DE CAMARON
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Panel de Dosificadores</title>
-
-<!-- ==== SDK de Firebase (version compat, no necesita herramientas de compilacion) ==== -->
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-database-compat.js"></script>
-
 <style>
-  body{font-family:Arial;background:#f2f2f2;text-align:center;padding:15px;margin:0;}
-  h1{color:#222;font-size:22px;margin:10px 0 20px 0;}
-  .grupo{max-width:900px;margin:0 auto 20px auto;background:#ececec;border-radius:14px;padding:18px 12px;}
-  .grupo h2{font-size:19px;color:#1a1a1a;font-weight:bold;margin:0 0 14px 0;}
-  .contenedor{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;}
-  .card{background:white;border-radius:10px;padding:12px;box-shadow:0 2px 5px rgba(0,0,0,0.2);flex:1 1 200px;max-width:230px;}
-  .card h3{color:#333;margin-top:0;font-size:15px;}
+  :root{--fondo:#0b1626;--panel:#13233a;--tarjeta:#1a2e4a;--texto:#e8f1fb;--suave:#8fa6c4;--acento:#22d3ee;--ok:#34d399;--mal:#f87171;}
+  *{box-sizing:border-box;}
+  body{font-family:"Segoe UI",Arial,sans-serif;background:radial-gradient(circle at 20% 0%,#16345c 0,var(--fondo) 55%) fixed;color:var(--texto);margin:0;padding:18px;text-align:center;min-height:100vh;}
+  h1{font-size:26px;margin:8px 0 4px 0;letter-spacing:.5px;}
+  h1 span{color:var(--acento);}
+  .sub{color:var(--suave);font-size:13px;margin-bottom:16px;}
+  .barra{max-width:980px;margin:0 auto 18px auto;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:14px;font-size:14px;color:var(--suave);}
+  .barra b{color:var(--texto);}
+  .grupo{max-width:980px;margin:0 auto 18px auto;background:var(--panel);border:1px solid #23406a;border-radius:18px;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,.35);transition:opacity .3s;}
+  .grupo.off-linea{opacity:.55;filter:grayscale(.6);}
+  .cabecera{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+  .cabecera h2{margin:0;font-size:20px;}
+  .chip{font-size:12px;padding:4px 10px;border-radius:14px;font-weight:600;}
+  .chip.con{background:rgba(52,211,153,.18);color:var(--ok);} .chip.desc{background:rgba(143,166,196,.18);color:var(--suave);}
+  .chip.temp{background:rgba(34,211,238,.15);color:var(--acento);}
+  .contenedor{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
+  .card{background:var(--tarjeta);border-radius:14px;padding:14px;}
+  .card h3{margin:0 0 8px 0;font-size:13px;font-weight:600;color:var(--suave);text-transform:uppercase;letter-spacing:.8px;}
   .card p{font-size:14px;margin:6px 0;}
-  input{width:85%;padding:6px;margin:4px;font-size:14px;box-sizing:border-box;}
-  button{padding:8px 14px;border:none;border-radius:5px;cursor:pointer;font-size:14px;margin:3px;color:white;}
-  .btn-star{background:#4CAF50;} .btn-star:hover{background:#45a049;}
-  .btn-stop{background:#e53935;} .btn-stop:hover{background:#c62828;}
-  .btn-guardar{background:#1976d2;} .btn-guardar:hover{background:#1565c0;}
-  .estado-on{color:#2e7d32;font-weight:bold;}
-  .estado-off{color:#c62828;font-weight:bold;}
-  .sin-conexion{color:#9e9e9e;font-style:italic;}
+  input{width:100%;padding:9px;margin:6px 0;font-size:14px;border-radius:8px;border:1px solid #2f4d7a;background:#0f1d31;color:var(--texto);}
+  input[type=checkbox]{width:auto;margin:0 5px 0 0;vertical-align:middle;}
+  button{padding:9px 16px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;margin:3px;color:#04121f;transition:transform .1s,filter .2s;}
+  button:hover:enabled{filter:brightness(1.12);} button:active:enabled{transform:scale(.96);}
+  button:disabled,input:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-star{background:var(--ok);} .btn-stop{background:var(--mal);} .btn-guardar{background:var(--acento);}
+  .btn-salir{background:#cbd5e1;}
+  .estado-on{color:var(--ok);font-weight:700;} .estado-off{color:var(--mal);font-weight:700;} .sin-conexion{color:var(--suave);font-style:italic;}
+  .led{width:18px;height:18px;border-radius:50%;background:#64748b;display:inline-block;border:2px solid rgba(255,255,255,.25);}
+  .led.on{background:var(--ok);box-shadow:0 0 10px 3px rgba(52,211,153,.7);}
+  .led.dosif{background:var(--ok);animation:pulso 1s infinite;}
+  .led.off{background:var(--mal);box-shadow:0 0 8px 2px rgba(248,113,113,.55);}
+  @keyframes pulso{0%,100%{box-shadow:0 0 4px 1px rgba(52,211,153,.5);}50%{box-shadow:0 0 16px 6px rgba(52,211,153,.95);}}
+  /* Temperatura */
+  .temp-num{font-size:34px;font-weight:700;margin:4px 0 10px 0;}
+  .temp-num small{font-size:16px;color:var(--suave);}
+  .term{height:12px;border-radius:8px;background:#0f1d31;overflow:hidden;}
+  .term i{display:block;height:100%;width:0;border-radius:8px;background:var(--acento);transition:width .6s,background .6s;}
+  .term-esc{display:flex;justify-content:space-between;font-size:11px;color:var(--suave);margin-top:4px;}
+  /* Login */
+  #login{max-width:330px;margin:70px auto;background:var(--panel);border:1px solid #23406a;border-radius:20px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.5);}
+  #login .gota{font-size:44px;}
+  #login button{width:100%;background:var(--acento);margin:12px 0 0 0;padding:11px;}
+  #msgLogin{color:var(--mal);font-size:14px;min-height:18px;margin-top:10px;}
+  #app{display:none;}
 </style>
 </head>
 <body>
 
-<h1>Panel de Dosificadores</h1>
-<div id="paneles"></div>
+<div id="login">
+  <div class="gota">💧</div>
+  <h1>Dosi<span>Panel</span></h1>
+  <div class="sub">Acceso autorizado</div>
+  <input id="usuario" type="text" placeholder="Usuario" autocomplete="username" autocapitalize="none">
+  <input id="clave" type="password" placeholder="Contraseña" autocomplete="current-password">
+  <button id="btnEntrar">Entrar</button>
+  <div id="msgLogin"></div>
+</div>
+
+<div id="app">
+  <h1>💧 Dosi<span>Panel</span></h1>
+  <div class="sub">Control de dosificadores en tiempo real</div>
+  <div class="barra">
+    <span id="resumen">-</span>
+    <span id="avisoLectura" style="display:none;color:#fbbf24;font-weight:600;">👁 Solo lectura</span>
+    <label><input type="checkbox" id="verTodos">Mostrar también los desconectados</label>
+    <button class="btn-salir" id="btnSalir">Salir</button>
+  </div>
+  <div id="paneles"></div>
+</div>
 
 <script>
-// ============================================================
-//  CONFIGURA AQUI TU PROYECTO DE FIREBASE
-//  (lo obtienes en Configuracion del proyecto > General > Tus apps)
-// ============================================================
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
   authDomain: "TU_PROYECTO.firebaseapp.com",
   databaseURL: "https://TU_PROYECTO-default-rtdb.firebaseio.com",
   projectId: "TU_PROYECTO"
 };
+const DOMINIO_USUARIOS = "dosificadores.app"; // usuario "vive" => vive@dosificadores.app
+const USUARIOS_SOLO_LECTURA = ["invitado"]; // pueden ver, pero no controlar
+let soloLectura = false;
+const TOTAL_DISPOSITIVOS = 10;
+const UMBRAL_CONEXION_MS = 35000;
+const TEMP_MIN = 0, TEMP_MAX = 50; // rango de la barra del termometro (°C)
 
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 const db = firebase.database();
 
-// ============================================================
-//  DISPOSITIVOS A MOSTRAR (deben coincidir con la ruta que usa
-//  cada ESP8266 en su variable RUTA_DISPOSITIVO)
-// ============================================================
-const dispositivos = [
-  { id: "dispositivo1", nombre: "Dosificador 1" },
-  { id: "dispositivo2", nombre: "Dosificador 2" },
-  { id: "dispositivo3", nombre: "Dosificador 3" }
-];
+// ---------------- LOGIN ----------------
+const elUsuario = document.getElementById("usuario");
+const elClave = document.getElementById("clave");
+const elMsg = document.getElementById("msgLogin");
 
-const contenedorPrincipal = document.getElementById("paneles");
+function entrar() {
+  const usuario = elUsuario.value.trim().toLowerCase();
+  if (!usuario || !elClave.value) { elMsg.textContent = "Escribe usuario y contraseña."; return; }
+  elMsg.textContent = "";
+  auth.signInWithEmailAndPassword(usuario + "@" + DOMINIO_USUARIOS, elClave.value).catch(function (e) {
+    elMsg.textContent = e.code === "auth/too-many-requests" ? "Demasiados intentos. Espera un momento." : "Usuario o contraseña incorrectos.";
+  });
+}
+document.getElementById("btnEntrar").addEventListener("click", entrar);
+elClave.addEventListener("keydown", function (e) { if (e.key === "Enter") entrar(); });
+document.getElementById("btnSalir").addEventListener("click", function () { auth.signOut().then(function () { location.reload(); }); });
 
-dispositivos.forEach(function (dispositivo) {
-  crearPanel(dispositivo);
+let panelIniciado = false;
+auth.onAuthStateChanged(function (u) {
+  document.getElementById("login").style.display = u ? "none" : "block";
+  document.getElementById("app").style.display = u ? "block" : "none";
+  if (u) {
+    soloLectura = USUARIOS_SOLO_LECTURA.indexOf((u.email || "").split("@")[0].toLowerCase()) !== -1;
+    document.getElementById("avisoLectura").style.display = soloLectura ? "" : "none";
+  }
+  if (u && !panelIniciado) { panelIniciado = true; iniciarPanel(); }
 });
 
-function crearPanel(dispositivo) {
-  // ---- Construye el HTML del grupo (una vez) ----
-  const grupo = document.createElement("div");
-  grupo.className = "grupo";
-  grupo.innerHTML =
-    "<h2>" + dispositivo.nombre + "</h2>" +
-    "<div class='contenedor'>" +
-      "<div class='card'>" +
-        "<h3>Estado</h3>" +
-        "<p class='valor-estado'>Cargando...</p>" +
-        "<button class='btn-star'>star</button>" +
-        "<button class='btn-stop'>stop</button>" +
-      "</div>" +
-      "<div class='card'>" +
-        "<h3>Tiempo dosificando (s)</h3>" +
-        "<p>Actual: <b class='valor-dosif'>-</b> s</p>" +
-        "<input type='number' min='1' step='1' class='input-dosif' placeholder='segundos'>" +
-        "<br><button class='btn-guardar btn-guardar-dosif'>Actualizar</button>" +
-      "</div>" +
-      "<div class='card'>" +
-        "<h3>Cada cuanto (s)</h3>" +
-        "<p>Actual: <b class='valor-cada'>-</b> s</p>" +
-        "<input type='number' min='1' step='1' class='input-cada' placeholder='segundos'>" +
-        "<br><button class='btn-guardar btn-guardar-cada'>Actualizar</button>" +
-      "</div>" +
-      "<div class='card valor-tarjeta-temp' style='display:none'>" +
-        "<h3>Temperatura agua</h3>" +
-        "<p style='font-size:20px;'><b class='valor-temp'>-</b> &deg;C</p>" +
-      "</div>" +
-    "</div>";
-  contenedorPrincipal.appendChild(grupo);
+// ---------------- PANEL ----------------
+function iniciarPanel() {
+  let offsetServidor = 0;
+  db.ref(".info/serverTimeOffset").on("value", function (s) { offsetServidor = s.val() || 0; evaluarTodos(); });
 
-  const refDispositivo = db.ref("dosificadores/" + dispositivo.id);
+  const paneles = [];
+  const contenedor = document.getElementById("paneles");
+  const chkTodos = document.getElementById("verTodos");
+  for (let i = 1; i <= TOTAL_DISPOSITIVOS; i++) paneles.push(crearPanel({ id: "dispositivo" + i, nombre: "Dosificador " + i }));
+  chkTodos.addEventListener("change", evaluarTodos);
+  setInterval(evaluarTodos, 5000);
 
-  // ---- Escucha en tiempo real: cualquier cambio (de la pagina o del ESP8266) se refleja solo ----
-  refDispositivo.on("value", function (snapshot) {
-    const datos = snapshot.val();
-    const elEstado = grupo.querySelector(".valor-estado");
-    const elDosif = grupo.querySelector(".valor-dosif");
-    const elCada = grupo.querySelector(".valor-cada");
-    const elTarjetaTemp = grupo.querySelector(".valor-tarjeta-temp");
-    const elTemp = grupo.querySelector(".valor-temp");
+  function evaluarTodos() {
+    let n = 0;
+    paneles.forEach(function (p) { if (p.evaluar()) n++; });
+    document.getElementById("resumen").innerHTML = "<b>" + n + "</b> conectado" + (n === 1 ? "" : "s") + " de " + TOTAL_DISPOSITIVOS;
+  }
 
-    if (!datos) {
-      elEstado.textContent = "Sin datos aun";
-      elEstado.className = "valor-estado sin-conexion";
-      return;
+  function crearPanel(d) {
+    const grupo = document.createElement("div");
+    grupo.className = "grupo";
+    grupo.style.display = "none";
+    grupo.innerHTML =
+      "<div class='cabecera'><span class='led'></span><h2>" + d.nombre + "</h2>" +
+      "<span class='chip desc chip-con'>Desconectado</span><span class='chip temp chip-temp' style='display:none'></span></div>" +
+      "<div class='contenedor'>" +
+        "<div class='card'><h3>Estado</h3><p class='valor-estado'>Cargando...</p>" +
+          "<button class='btn-star'>star</button><button class='btn-stop'>stop</button></div>" +
+        "<div class='card'><h3>Tiempo dosificando</h3><p>Actual: <b class='valor-dosif'>-</b> s</p>" +
+          "<input type='number' min='1' step='1' class='input-dosif' placeholder='segundos'>" +
+          "<button class='btn-guardar btn-guardar-dosif'>Actualizar</button></div>" +
+        "<div class='card'><h3>Cada cuánto</h3><p>Actual: <b class='valor-cada'>-</b> s</p>" +
+          "<input type='number' min='1' step='1' class='input-cada' placeholder='segundos'>" +
+          "<button class='btn-guardar btn-guardar-cada'>Actualizar</button></div>" +
+        "<div class='card'><h3>🌡 Temperatura del agua</h3>" +
+          "<div class='temp-num'><span class='valor-temp'>--</span> <small>°C</small></div>" +
+          "<div class='term'><i></i></div>" +
+          "<div class='term-esc'><span>" + TEMP_MIN + "°</span><span>" + TEMP_MAX + "°</span></div></div>" +
+      "</div>";
+    contenedor.appendChild(grupo);
+
+    const q = function (s) { return grupo.querySelector(s); };
+    const led = q(".led"), chipCon = q(".chip-con"), chipTemp = q(".chip-temp");
+    const ref = db.ref("dosificadores/" + d.id);
+    let datos = null;
+
+    ref.on("value", function (s) { datos = s.val(); pintar(); evaluarTodos(); }, function () {});
+
+    function conectado() {
+      return !!datos && datos.ultimaVez != null && (Date.now() + offsetServidor - datos.ultimaVez) < UMBRAL_CONEXION_MS;
     }
 
-    const encendido = datos.estado === "encendido";
-    let texto = encendido ? "ENCENDIDO" : "APAGADO";
-    if (encendido && datos.dosificando) texto += " (dosificando)";
-    else if (encendido) texto += " (en espera)";
+    function pintar() {
+      const elEstado = q(".valor-estado");
+      if (!datos) { elEstado.textContent = "Sin datos aun"; elEstado.className = "valor-estado sin-conexion"; return; }
+      const enc = datos.estado === "encendido";
+      elEstado.textContent = (enc ? "ENCENDIDO" : "APAGADO") + (enc ? (datos.dosificando ? " (dosificando)" : " (en espera)") : "");
+      elEstado.className = "valor-estado " + (enc ? "estado-on" : "estado-off");
+      q(".valor-dosif").textContent = datos.tiempoDosificando != null ? datos.tiempoDosificando : "-";
+      q(".valor-cada").textContent = datos.cadaCuanto != null ? datos.cadaCuanto : "-";
 
-    elEstado.textContent = texto;
-    elEstado.className = "valor-estado " + (encendido ? "estado-on" : "estado-off");
-    elDosif.textContent = datos.tiempoDosificando != null ? datos.tiempoDosificando : "-";
-    elCada.textContent = datos.cadaCuanto != null ? datos.cadaCuanto : "-";
-
-    if (datos.temperaturaAgua != null) {
-      elTarjetaTemp.style.display = "";
-      elTemp.textContent = Number(datos.temperaturaAgua).toFixed(2);
+      const barra = q(".term i");
+      if (datos.temperaturaAgua != null) {
+        const t = Number(datos.temperaturaAgua);
+        const pct = Math.max(0, Math.min(100, (t - TEMP_MIN) / (TEMP_MAX - TEMP_MIN) * 100));
+        q(".valor-temp").textContent = t.toFixed(1);
+        barra.style.width = pct + "%";
+        barra.style.background = "hsl(" + Math.round(200 - pct * 2) + ",85%,55%)"; // azul frio -> rojo caliente
+        chipTemp.textContent = "🌡 " + t.toFixed(1) + " °C";
+        chipTemp.style.display = "";
+      } else {
+        q(".valor-temp").textContent = "--";
+        barra.style.width = "0";
+        chipTemp.style.display = "none";
+      }
     }
-  });
 
-  // ---- Botones: escriben directo en Firebase, el ESP8266 los toma en su siguiente consulta ----
-  grupo.querySelector(".btn-star").addEventListener("click", function () {
-    refDispositivo.update({ estado: "encendido" });
-  });
+    function evaluar() {
+      const con = conectado();
+      const enc = !!datos && datos.estado === "encendido";
+      grupo.style.display = (con || chkTodos.checked) ? "" : "none";
+      grupo.classList.toggle("off-linea", !con);
+      chipCon.textContent = con ? "Conectado" : "Desconectado";
+      chipCon.className = "chip chip-con " + (con ? "con" : "desc");
+      led.className = "led" + (!con ? "" : (enc ? (datos.dosificando ? " dosif" : " on") : " off"));
+      grupo.querySelectorAll("button,input").forEach(function (el) { el.disabled = !con || soloLectura; });
+      return con;
+    }
 
-  grupo.querySelector(".btn-stop").addEventListener("click", function () {
-    refDispositivo.update({ estado: "apagado" });
-  });
-
-  grupo.querySelector(".btn-guardar-dosif").addEventListener("click", function () {
-    const valor = parseInt(grupo.querySelector(".input-dosif").value, 10);
-    if (valor > 0) refDispositivo.update({ tiempoDosificando: valor });
-  });
-
-  grupo.querySelector(".btn-guardar-cada").addEventListener("click", function () {
-    const valor = parseInt(grupo.querySelector(".input-cada").value, 10);
-    if (valor > 0) refDispositivo.update({ cadaCuanto: valor });
-  });
+    q(".btn-star").addEventListener("click", function () { ref.update({ estado: "encendido" }); });
+    q(".btn-stop").addEventListener("click", function () { ref.update({ estado: "apagado" }); });
+    q(".btn-guardar-dosif").addEventListener("click", function () {
+      const v = parseInt(q(".input-dosif").value, 10); if (v > 0) ref.update({ tiempoDosificando: v });
+    });
+    q(".btn-guardar-cada").addEventListener("click", function () {
+      const v = parseInt(q(".input-cada").value, 10); if (v > 0) ref.update({ cadaCuanto: v });
+    });
+    return { evaluar: evaluar };
+  }
 }
 </script>
 </body>
